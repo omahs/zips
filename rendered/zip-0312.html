@@ -10,11 +10,11 @@
         <pre>ZIP: 312
 Title: FROST for Spend Authorization Multisignatures
 Owners: Conrado Gouvea &lt;conrado@zfnd.org&gt;
-        Chelsea Komlo &lt;ckomlo@uwaterloo.ca&gt;
-        Deirdre Connolly &lt;deirdre@zfnd.org&gt;
+Original-Authors: Chelsea Komlo
+                  Deirdre Connolly
 Status: Draft
 Category: Wallet
-Created: 2022-08-dd
+Created: 2024-08-dd
 License: MIT
 Discussions-To: &lt;<a href="https://github.com/zcash/zips/issues/382">https://github.com/zcash/zips/issues/382</a>&gt;
 Pull-Request: &lt;<a href="https://github.com/zcash/zips/pull/662">https://github.com/zcash/zips/pull/662</a>&gt;</pre>
@@ -47,7 +47,7 @@ Pull-Request: &lt;<a href="https://github.com/zcash/zips/pull/662">https://githu
                     <li>The transaction is signed with a re-randomized version of the user's spend authorization private key.</li>
                     <li>The zero-knowledge proof for the transaction is created with the randomizer as an auxiliary (secret) input, among others.</li>
                 </ul>
-                <p>When employing re-randomizable FROST as specified in this ZIP, the goal is to split the spend authorization private key
+                <p>When employing re-randomized FROST as specified in this ZIP, the goal is to split the spend authorization private key
                     <span class="math">\(\mathsf{ask}\)</span>
                  among multiple possible signers. This means that the proof generation will still be performed by a single participant, likely the one that created the transaction in the first place. Note that this user already controls the privacy of the transaction since they are responsible for creating the proof.</p>
                 <p>This fits well into the "Coordinator" role from the FROST specification <a id="footnote-reference-5" class="footnote_reference" href="#frost-protocol">5</a>. The Coordinator is responsible for sending the message to be signed to all participants, and to aggregate the signature shares.</p>
@@ -87,33 +87,10 @@ Pull-Request: &lt;<a href="https://github.com/zcash/zips/pull/662">https://githu
                     <span class="math">\(\mathsf{sk}\)</span>
                  prevents using seed phrases to recover the original secret (which may be something desirable in the context of FROST).</p>
             </section>
-            <section id="re-randomizable-frost"><h3><span class="section-heading">Re-randomizable FROST</span><span class="section-anchor"> <a rel="bookmark" href="#re-randomizable-frost"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h3>
+            <section id="re-randomized-frost"><h3><span class="section-heading">Re-Randomized FROST</span><span class="section-anchor"> <a rel="bookmark" href="#re-randomized-frost"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h3>
                 <p>To add re-randomization to FROST, follow the specification <a id="footnote-reference-13" class="footnote_reference" href="#frost">3</a> with the following modifications.</p>
-                <section id="randomizer-generation"><h4><span class="section-heading">Randomizer Generation</span><span class="section-anchor"> <a rel="bookmark" href="#randomizer-generation"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h4>
-                    <p>A new helper function is defined, which generates a randomizer. The <cite>encode_signing_package</cite> is defined as the byte serialization of the <cite>msg</cite>, <cite>commitment_list</cite> values as described in <a id="footnote-reference-14" class="footnote_reference" href="#frost-serialization">11</a>. Implementations MAY choose another encoding as long as all values (the message, and the identifier, binding nonce and hiding nonce for each participant) are unambiguously encoded.</p>
-                    <p>The function <cite>random_bytes(n)</cite> is defined in <a id="footnote-reference-15" class="footnote_reference" href="#frost">3</a> and it returns a buffer with <cite>n</cite> bytes sampled uniformly at random. The constant <cite>Ns</cite> is also specified in <a id="footnote-reference-16" class="footnote_reference" href="#frost">3</a> and is the size of a serialized scalar.</p>
-                    <pre>randomizer_generate():
-
-Inputs:
-- msg, the message being signed in the current FROST signing run
-- commitment_list = [(i, hiding_nonce_commitment_i,
-  binding_nonce_commitment_i), ...], a list of commitments issued by
-  each participant, where each element in the list indicates a
-  NonZeroScalar identifier i and two commitment Element values
-  (hiding_nonce_commitment_i, binding_nonce_commitment_i). This list
-  MUST be sorted in ascending order by identifier.
-
-Outputs: randomizer, a Scalar
-
-def randomizer_generate(msg, commitment_list):
-  # Generate a random byte buffer with the size of a serialized scalar
-  rng_randomizer = random_bytes(Ns)
-  signing_package_enc = encode_signing_package(commitment_list, msg)
-  randomizer_input = rng_randomizer || signing_package_enc
-  return HR(randomizer_input)</pre>
-                </section>
                 <section id="round-one-commitment"><h4><span class="section-heading">Round One - Commitment</span><span class="section-anchor"> <a rel="bookmark" href="#round-one-commitment"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h4>
-                    <p>Roune One is exactly the same as specified <a id="footnote-reference-17" class="footnote_reference" href="#frost">3</a>. But for context, it involves these steps:</p>
+                    <p>Roune One is exactly the same as specified <a id="footnote-reference-14" class="footnote_reference" href="#frost">3</a>. But for context, it involves these steps:</p>
                     <ul>
                         <li>Each signer generates nonces and their corresponding public commitments. A nonce is a pair of Scalar values, and a commitment is a pair of Element values.</li>
                         <li>The nonces are stored locally by the signer and kept private for use in the second round.</li>
@@ -121,8 +98,13 @@ def randomizer_generate(msg, commitment_list):
                     </ul>
                 </section>
                 <section id="round-two-signature-share-generation"><h4><span class="section-heading">Round Two - Signature Share Generation</span><span class="section-anchor"> <a rel="bookmark" href="#round-two-signature-share-generation"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h4>
-                    <p>In Round Two, the Coordinator generates a random scalar <code>randomizer</code> by calling <code>randomizer_generate</code> and sends it to each signer, over a confidential and authenticated channel, along with the message and the set of signing commitments. (Note that this differs from regular FROST which just requires an authenticated channel.)</p>
+                    <p>In Round Two, the Coordinator picks a message and sends it to each signer along with the commitments received in Round One, over an authenticated and encrypted channel. In Re-Randomized FROST, an additional value called <cite>randomizer</cite> needs to be generated by the Coordinator and sent along with the message and commitments.</p>
                     <p>In Zcash, the message that needs to be signed is actually the SIGHASH transaction hash, which does not convey enough information for the signers to decide if they want to authorize the transaction or not. Therefore, in practice, more data is needed to be sent (over the same encrypted, authenticated channel) from the Coordinator to the signers, possibly the transaction itself, openings of value commitments, decryption of note ciphertexts, etc.; and the signers MUST check that the given SIGHASH matches the data sent from the Coordinator, or compute the SIGHASH themselves from that data. However, the specific mechanism for that process is outside the scope of this ZIP.</p>
+                    <p>In Zcash, the <cite>randomizer</cite> is called
+                        <span class="math">\(\mathsf{alpha}\)</span>
+                     and MUST be generated accordingly to the Zcash specification <a id="footnote-reference-15" class="footnote_reference" href="#protocol-spendauthsig">14</a>. Note that the choice of
+                        <span class="math">\(\mathsf{alpha}\)</span>
+                     influences the SIGHASH computation, so it is impossible to compute the <cite>randomizer</cite> based on the message (SIGHASH), as suggested in <a id="footnote-reference-16" class="footnote_reference" href="#frost-rerandomized">4</a>. This is not an issue as long the <cite>randomizer</cite> is generated uniformly at random, which is done in the Zcash specification.</p>
                     <p>The randomized <code>sign</code> function is defined as the regular FROST <code>sign</code> function, but with its inputs modified relative to the <code>randomizer</code> as following:</p>
                     <ul>
                         <li><code>sk_i = sk_i + randomizer</code></li>
@@ -143,37 +125,37 @@ def randomizer_generate(msg, commitment_list):
             </section>
             <section id="ciphersuites"><h3><span class="section-heading">Ciphersuites</span><span class="section-anchor"> <a rel="bookmark" href="#ciphersuites"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h3>
                 <section id="frost-jubjub-blake2b-512"><h4><span class="section-heading">FROST(Jubjub, BLAKE2b-512)</span><span class="section-anchor"> <a rel="bookmark" href="#frost-jubjub-blake2b-512"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h4>
-                    <p>This ciphersuite uses Jubjub for the Group and BLAKE2b-512 for the Hash function <code>H</code> meant to produce signatures indistinguishable from RedJubjub Sapling Spend Authorization Signatures as specified in <a id="footnote-reference-18" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.</p>
+                    <p>This ciphersuite uses Jubjub for the Group and BLAKE2b-512 for the Hash function <code>H</code> meant to produce signatures indistinguishable from RedJubjub Sapling Spend Authorization Signatures as specified in <a id="footnote-reference-17" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.</p>
                     <ul>
-                        <li>Group: Jubjub <a id="footnote-reference-19" class="footnote_reference" href="#protocol-jubjub">15</a> with base point
+                        <li>Group: Jubjub <a id="footnote-reference-18" class="footnote_reference" href="#protocol-jubjub">15</a> with base point
                             <span class="math">\(\mathcal{G}^{\mathsf{Sapling}}\)</span>
-                         as defined in <a id="footnote-reference-20" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.
+                         as defined in <a id="footnote-reference-19" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.
                             <ul>
                                 <li>Order:
                                     <span class="math">\(r_\mathbb{J}\)</span>
-                                 as defined in <a id="footnote-reference-21" class="footnote_reference" href="#protocol-jubjub">15</a>.</li>
-                                <li>Identity: as defined in <a id="footnote-reference-22" class="footnote_reference" href="#protocol-jubjub">15</a>.</li>
+                                 as defined in <a id="footnote-reference-20" class="footnote_reference" href="#protocol-jubjub">15</a>.</li>
+                                <li>Identity: as defined in <a id="footnote-reference-21" class="footnote_reference" href="#protocol-jubjub">15</a>.</li>
                                 <li>RandomScalar(): Implemented by returning a uniformly random Scalar in the range [0, <code>G.Order()</code> - 1]. Refer to {{frost-randomscalar}} for implementation guidance.</li>
                                 <li>SerializeElement(P): Implemented as
                                     <span class="math">\(\mathsf{repr}_\mathbb{J}(P)\)</span>
-                                 as defined in <a id="footnote-reference-23" class="footnote_reference" href="#protocol-jubjub">15</a></li>
+                                 as defined in <a id="footnote-reference-22" class="footnote_reference" href="#protocol-jubjub">15</a></li>
                                 <li>DeserializeElement(P): Implemented as
                                     <span class="math">\(\mathsf{abst}_\mathbb{J}(P)\)</span>
-                                 as defined in <a id="footnote-reference-24" class="footnote_reference" href="#protocol-jubjub">15</a>, returning an error if
+                                 as defined in <a id="footnote-reference-23" class="footnote_reference" href="#protocol-jubjub">15</a>, returning an error if
                                     <span class="math">\(\bot\)</span>
                                  is returned. Additionally, this function validates that the resulting element is not the group identity element, returning an error if the check fails.</li>
                                 <li>SerializeScalar: Implemented by outputting the little-endian 32-byte encoding of the Scalar value.</li>
                                 <li>DeserializeScalar: Implemented by attempting to deserialize a Scalar from a little-endian 32-byte string. This function can fail if the input does not represent a Scalar in the range [0, <code>G.Order()</code> - 1].</li>
                             </ul>
                         </li>
-                        <li>Hash (<code>H</code>): BLAKE2b-512 <a id="footnote-reference-25" class="footnote_reference" href="#blake">1</a> (BLAKE2b with 512-bit output and 16-byte personalization string), and Nh = 64.
+                        <li>Hash (<code>H</code>): BLAKE2b-512 <a id="footnote-reference-24" class="footnote_reference" href="#blake">1</a> (BLAKE2b with 512-bit output and 16-byte personalization string), and Nh = 64.
                             <ul>
                                 <li>H1(m): Implemented by computing BLAKE2b-512("FROST_RedJubjubR", m), interpreting the 64 bytes as a little-endian integer, and reducing the resulting integer modulo <code>G.Order()</code>.</li>
                                 <li>H2(m): Implemented by computing BLAKE2b-512("Zcash_RedJubjubH", m), interpreting the 64 bytes as a little-endian integer, and reducing the resulting integer modulo <code>G.Order()</code>. (This is equivalent to
                                     <span class="math">\(\mathsf{H}^\circledast(m)\)</span>
                                 , as defined by the
                                     <span class="math">\(\mathsf{RedJubjub}\)</span>
-                                 scheme instantiated in <a id="footnote-reference-26" class="footnote_reference" href="#protocol-concretereddsa">12</a>.)</li>
+                                 scheme instantiated in <a id="footnote-reference-25" class="footnote_reference" href="#protocol-concretereddsa">12</a>.)</li>
                                 <li>H3(m): Implemented by computing BLAKE2b-512("FROST_RedJubjubN", m), interpreting the 64 bytes as a little-endian integer, and reducing the resulting integer modulo <code>G.Order()</code>.</li>
                                 <li>H4(m): Implemented by computing BLAKE2b-512("FROST_RedJubjubM", m).</li>
                                 <li>H5(m): Implemented by computing BLAKE2b-512("FROST_RedJubjubC", m).</li>
@@ -181,40 +163,40 @@ def randomizer_generate(msg, commitment_list):
                             </ul>
                         </li>
                     </ul>
-                    <p>Signature verification is as specified in <a id="footnote-reference-27" class="footnote_reference" href="#protocol-concretespendauthsig">13</a> for RedJubjub.</p>
+                    <p>Signature verification is as specified in <a id="footnote-reference-26" class="footnote_reference" href="#protocol-concretespendauthsig">13</a> for RedJubjub.</p>
                 </section>
                 <section id="frost-pallas-blake2b-512"><h4><span class="section-heading">FROST(Pallas, BLAKE2b-512)</span><span class="section-anchor"> <a rel="bookmark" href="#frost-pallas-blake2b-512"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h4>
-                    <p>This ciphersuite uses Pallas for the Group and BLAKE2b-512 for the Hash function <code>H</code> meant to produce signatures indistinguishable from RedPallas Orchard Spend Authorization Signatures as specified in <a id="footnote-reference-28" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.</p>
+                    <p>This ciphersuite uses Pallas for the Group and BLAKE2b-512 for the Hash function <code>H</code> meant to produce signatures indistinguishable from RedPallas Orchard Spend Authorization Signatures as specified in <a id="footnote-reference-27" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.</p>
                     <ul>
-                        <li>Group: Pallas <a id="footnote-reference-29" class="footnote_reference" href="#protocol-pallasandvesta">16</a> with base point
+                        <li>Group: Pallas <a id="footnote-reference-28" class="footnote_reference" href="#protocol-pallasandvesta">16</a> with base point
                             <span class="math">\(\mathcal{G}^{\mathsf{Orchard}}\)</span>
-                         as defined in <a id="footnote-reference-30" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.
+                         as defined in <a id="footnote-reference-29" class="footnote_reference" href="#protocol-concretespendauthsig">13</a>.
                             <ul>
                                 <li>Order:
                                     <span class="math">\(r_\mathbb{P}\)</span>
-                                 as defined in <a id="footnote-reference-31" class="footnote_reference" href="#protocol-pallasandvesta">16</a>.</li>
-                                <li>Identity: as defined in <a id="footnote-reference-32" class="footnote_reference" href="#protocol-pallasandvesta">16</a>.</li>
+                                 as defined in <a id="footnote-reference-30" class="footnote_reference" href="#protocol-pallasandvesta">16</a>.</li>
+                                <li>Identity: as defined in <a id="footnote-reference-31" class="footnote_reference" href="#protocol-pallasandvesta">16</a>.</li>
                                 <li>RandomScalar(): Implemented by returning a uniformly random Scalar in the range [0, <code>G.Order()</code> - 1]. Refer to {{frost-randomscalar}} for implementation guidance.</li>
                                 <li>SerializeElement(P): Implemented as
                                     <span class="math">\(\mathsf{repr}_\mathbb{P}(P)\)</span>
-                                 as defined in <a id="footnote-reference-33" class="footnote_reference" href="#protocol-pallasandvesta">16</a>.</li>
+                                 as defined in <a id="footnote-reference-32" class="footnote_reference" href="#protocol-pallasandvesta">16</a>.</li>
                                 <li>DeserializeElement(P): Implemented as
                                     <span class="math">\(\mathsf{abst}_\mathbb{P}(P)\)</span>
-                                 as defined in <a id="footnote-reference-34" class="footnote_reference" href="#protocol-pallasandvesta">16</a>, failing if
+                                 as defined in <a id="footnote-reference-33" class="footnote_reference" href="#protocol-pallasandvesta">16</a>, failing if
                                     <span class="math">\(\bot\)</span>
                                  is returned. Additionally, this function validates that the resulting element is not the group identity element, returning an error if the check fails.</li>
                                 <li>SerializeScalar: Implemented by outputting the little-endian 32-byte encoding of the Scalar value.</li>
                                 <li>DeserializeScalar: Implemented by attempting to deserialize a Scalar from a little-endian 32-byte string. This function can fail if the input does not represent a Scalar in the range [0, <code>G.Order()</code> - 1].</li>
                             </ul>
                         </li>
-                        <li>Hash (<code>H</code>): BLAKE2b-512 <a id="footnote-reference-35" class="footnote_reference" href="#blake">1</a> (BLAKE2b with 512-bit output and 16-byte personalization string), and Nh = 64.
+                        <li>Hash (<code>H</code>): BLAKE2b-512 <a id="footnote-reference-34" class="footnote_reference" href="#blake">1</a> (BLAKE2b with 512-bit output and 16-byte personalization string), and Nh = 64.
                             <ul>
                                 <li>H1(m): Implemented by computing BLAKE2b-512("FROST_RedPallasR", m), interpreting the 64 bytes as a little-endian integer, and reducing the resulting integer modulo <code>G.Order()</code>.</li>
                                 <li>H2(m): Implemented by computing BLAKE2b-512("Zcash_RedPallasH", m), interpreting the 64 bytes as a little-endian integer, and reducing the resulting integer modulo <code>G.Order()</code>. (This is equivalent to
                                     <span class="math">\(\mathsf{H}^\circledast(m)\)</span>
                                 , as defined by the
                                     <span class="math">\(\mathsf{RedPallas}\)</span>
-                                 scheme instantiated in <a id="footnote-reference-36" class="footnote_reference" href="#protocol-concretereddsa">12</a>.)</li>
+                                 scheme instantiated in <a id="footnote-reference-35" class="footnote_reference" href="#protocol-concretereddsa">12</a>.)</li>
                                 <li>H3(m): Implemented by computing BLAKE2b-512("FROST_RedPallasN", m), interpreting the 64 bytes as a little-endian integer, and reducing the resulting integer modulo <code>G.Order()</code>.</li>
                                 <li>H4(m): Implemented by computing BLAKE2b-512("FROST_RedPallasM", m).</li>
                                 <li>H5(m): Implemented by computing BLAKE2b-512("FROST_RedPallasC", m).</li>
@@ -222,14 +204,14 @@ def randomizer_generate(msg, commitment_list):
                             </ul>
                         </li>
                     </ul>
-                    <p>Signature verification is as specified in <a id="footnote-reference-37" class="footnote_reference" href="#protocol-concretespendauthsig">13</a> for RedPallas.</p>
+                    <p>Signature verification is as specified in <a id="footnote-reference-36" class="footnote_reference" href="#protocol-concretespendauthsig">13</a> for RedPallas.</p>
                 </section>
             </section>
         </section>
         <section id="rationale"><h2><span class="section-heading">Rationale</span><span class="section-anchor"> <a rel="bookmark" href="#rationale"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h2>
             <p>FROST is a threshold Schnorr signature scheme, and Zcash Spend Authorization are also Schnorr signatures, which allows the usage of FROST with Zcash. However, since there is no widespread standard for Schnorr signatures, it must be ensured that the signatures generated by the FROST variant specified in this ZIP can be verified successfully by a Zcash implementation following its specification. In practice this entails making sure that the generated signature can be verified by the
                 <span class="math">\(\mathsf{RedDSA.Validate}\)</span>
-             function specified in <a id="footnote-reference-38" class="footnote_reference" href="#protocol-concretereddsa">12</a>:</p>
+             function specified in <a id="footnote-reference-37" class="footnote_reference" href="#protocol-concretereddsa">12</a>:</p>
             <ul>
                 <li>The FROST signature, when split into R and S in the first step of
                     <span class="math">\(\mathsf{RedDSA.Validate}\)</span>
@@ -244,7 +226,7 @@ def randomizer_generate(msg, commitment_list):
                 <li>Note that <code>r</code> (and thus <code>R</code>) will not be generated as specified in RedDSA.Sign. This is not an issue however, since with Schnorr signatures it does not matter for the verifier how the <code>r</code> value was chosen, it just needs to be generated uniformly at random, which is true for FROST.</li>
                 <li>The above will ensure that the verification equation in
                     <span class="math">\(\mathsf{RedDSA.Validate}\)</span>
-                 will pass, since FROST ensures the exact same equation will be valid as described in <a id="footnote-reference-39" class="footnote_reference" href="#frost-primeorderverify">8</a>.</li>
+                 will pass, since FROST ensures the exact same equation will be valid as described in <a id="footnote-reference-38" class="footnote_reference" href="#frost-primeorderverify">8</a>.</li>
             </ul>
             <p>The second step is adding the re-randomization functionality so that each FROST signing generates a re-randomized signature:</p>
             <ul>
@@ -256,8 +238,8 @@ def randomizer_generate(msg, commitment_list):
                 , which refers to the randomizer as
                     <span class="math">\(\alpha\)</span>
                 ) and <code>sum(lambda_i * c * (sk_i + randomizer))</code>. The latter can be rewritten as <code>c * (sum(lambda_i * sk_i) + randomizer *
-sum(lambda_i)</code>. Since <code>sum(lambda_i * sk_i) == sk</code> per the Shamir secret sharing mechanism used by FROST, and since <code>sum(lambda_i) == 1</code> <a id="footnote-reference-40" class="footnote_reference" href="#sum-lambda-proof">18</a>, we arrive at <code>c * (sk + randomizer)</code> as required.</li>
-                <li>The re-randomization procedure must be exactly the same as in <a id="footnote-reference-41" class="footnote_reference" href="#protocol-concretereddsa">12</a> to ensure that re-randomized keys are uniformly distributed and signatures are unlinkable. This is also true; observe that <code>randomizer_generate</code> generates randomizer uniformly at random as required by
+sum(lambda_i)</code>. Since <code>sum(lambda_i * sk_i) == sk</code> per the Shamir secret sharing mechanism used by FROST, and since <code>sum(lambda_i) == 1</code> <a id="footnote-reference-39" class="footnote_reference" href="#sum-lambda-proof">18</a>, we arrive at <code>c * (sk + randomizer)</code> as required.</li>
+                <li>The re-randomization procedure must be exactly the same as in <a id="footnote-reference-40" class="footnote_reference" href="#protocol-concretereddsa">12</a> to ensure that re-randomized keys are uniformly distributed and signatures are unlinkable. This is also true; observe that <code>randomizer_generate</code> generates randomizer uniformly at random as required by
                     <span class="math">\(\mathsf{RedDSA.GenRandom}\)</span>
                 ; and signature generation is compatible with
                     <span class="math">\(\mathsf{RedDSA.RandomizedPrivate}\)</span>
@@ -269,10 +251,10 @@ sum(lambda_i)</code>. Since <code>sum(lambda_i * sk_i) == sk</code> per the Sham
                     <span class="math">\(\mathsf{RedDSA.Validate}\)</span>
                  as explained in the previous item.</li>
             </ul>
-            <p>The security of Re-Randomized FROST with respect to the security assumptions of regular FROST is shown in <a id="footnote-reference-42" class="footnote_reference" href="#frost-rerandomized">4</a>.</p>
+            <p>The security of Re-Randomized FROST with respect to the security assumptions of regular FROST is shown in <a id="footnote-reference-41" class="footnote_reference" href="#frost-rerandomized">4</a>.</p>
         </section>
         <section id="reference-implementation"><h2><span class="section-heading">Reference implementation</span><span class="section-anchor"> <a rel="bookmark" href="#reference-implementation"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h2>
-            <p>The <cite>reddsa</cite> crate <a id="footnote-reference-43" class="footnote_reference" href="#crate-reddsa">17</a> contains a re-randomized FROST implementation of both ciphersuites.</p>
+            <p>The <cite>reddsa</cite> crate <a id="footnote-reference-42" class="footnote_reference" href="#crate-reddsa">17</a> contains a re-randomized FROST implementation of both ciphersuites.</p>
         </section>
         <section id="references"><h2><span class="section-heading">References</span><span class="section-anchor"> <a rel="bookmark" href="#references"><img width="24" height="24" class="section-anchor" src="assets/images/section-anchor.png" alt=""></a></span></h2>
             <table id="blake" class="footnote">
@@ -303,7 +285,13 @@ sum(lambda_i)</code>. Since <code>sum(lambda_i * sk_i) == sk</code> per the Sham
                 <tbody>
                     <tr>
                         <th>4</th>
-                        <td><a href="https://eprint.iacr.org/2024/436">Re-Randomized FROST</a></td>
+                        <td>
+                            <div>
+                                <h1>System Message: INFO/1 (zips/zip-0312.rst line 405) <a href="#re-randomized-frost-1">re-randomized-frost-1</a></h1>
+                                <p>Duplicate implicit target name: "re-randomized frost".</p>
+                            </div>
+                            <p><a href="https://eprint.iacr.org/2024/436">Re-Randomized FROST</a></p>
+                        </td>
                     </tr>
                 </tbody>
             </table>
